@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, g
+from flask import Flask, request, g
 from flask_restful import Api, Resource
 from psycopg2 import connect, extras, errors
 import psycopg2
@@ -12,6 +12,7 @@ from urllib.parse import urlparse, parse_qs
 from marshmallow import Schema, fields, ValidationError, validate  # Import Marshmallow
 from flasgger import swag_from, Swagger # Import Swagger
 import os
+from common import error_response
 
 
 # Load environment variables
@@ -116,18 +117,18 @@ def token_required(f):
     def decorated(*args, **kwargs):
         token = request.headers.get("Authorization")
         if not token:
-            return jsonify(error_response("Token is missing", 401)), 401
+            return error_response("Token is missing", 401), 401
 
         if not token.startswith("Bearer "):
-            return jsonify(error_response("Invalid token format.  Should be 'Bearer <token>'", 401)), 401
+            return error_response("Invalid token format.  Should be 'Bearer <token>'", 401), 401
         try:
             token = token.split(" ")[1]
         except IndexError:
-            return jsonify(error_response("Invalid token format.", 401)), 401
+            return error_response("Invalid token format.", 401), 401
 
         payload = decode_token(token)
         if not payload:
-            return jsonify(error_response("Invalid or expired token", 401)), 401
+            return error_response("Invalid or expired token", 401), 401
 
         g.user_id = payload["user_id"]
         return f(*args, **kwargs)
@@ -168,14 +169,6 @@ class DatabaseError(Exception):
         super().__init__(message)
         self.message = message
 
-
-
-# Function to generate standardized error responses
-def error_response(message, status_code):
-    """
-    Generates a standardized error response.
-    """
-    return {"error": {"message": message, "code": status_code}}
 
 
 # Schema Definitions (Marshmallow)
@@ -337,18 +330,18 @@ class HotspotRegister(Resource):
             params = (ssid, bssid, location_id, network_id, provider_id)
             hotspot_id = execute_query(query, params, fetchone=True)["hotspot_id"]
 
-            return jsonify({"message": "Hotspot registered successfully", "hotspot_id": hotspot_id}), 201
+            return {"message": "Hotspot registered successfully", "hotspot_id": hotspot_id}, 201
         except ValidationError as err:
-            return jsonify(error_response(err.messages, 400)), 400
+            return error_response(err.messages, 400), 400
         except errors.UniqueViolation as e:
-            return jsonify(error_response("Hotspot with this BSSID and SSID already exists", 400)), 400
+            return error_response("Hotspot with this BSSID and SSID already exists", 400), 400
         except DatabaseError as e:
-            return jsonify(error_response(e.message, 500)), 500
+            return error_response(e.message, 500), 500
         except APIException as e:
-            return jsonify(error_response(e.message, e.status_code)), e.status_code
+            return error_response(e.message, e.status_code), e.status_code
         except Exception as e:
             print(f"Error registering hotspot: {e}")
-            return jsonify(error_response("An error occurred during hotspot registration", 500)), 500
+            return error_response("An error occurred during hotspot registration", 500), 500
 
 
 
@@ -361,21 +354,21 @@ def handle_bad_request(error):
     """
     Error handler for 400 Bad Request errors.
     """
-    return jsonify(error_response("Invalid request", 400)), 400
+    return error_response("Invalid request", 400), 400
 
 @app.errorhandler(401)
 def handle_unauthorized(error):
     """
     Error handler for 401 Unauthorized errors.
     """
-    return jsonify(error_response("Unauthorized", 401)), 401
+    return error_response("Unauthorized", 401), 401
 
 @app.errorhandler(500)
 def handle_internal_server_error(error):
     """
     Error handler for 500 Internal Server Error errors.
     """
-    return jsonify(error_response("Internal server error", 500)), 500
+    return error_response("Internal server error", 500), 500
 
 
 

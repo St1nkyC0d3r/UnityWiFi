@@ -1,5 +1,5 @@
 import os
-from flask import Flask, request, jsonify, g
+from flask import Flask, request, g
 from flask_restful import Api, Resource
 from psycopg2 import connect, extras
 from psycopg2.pool import ThreadedConnectionPool
@@ -13,6 +13,7 @@ from urllib.parse import urlparse, parse_qs
 from marshmallow import Schema, fields, ValidationError, validate  # Import Marshmallow
 from flasgger import Swagger  # Import Swagger
 import os
+from common import error_response
 
 # Load environment variables
 load_dotenv()
@@ -235,18 +236,18 @@ def token_required(f):
     def decorated(*args, **kwargs):
         token = request.headers.get("Authorization")
         if not token:
-            return jsonify(error_response("Token is missing", 401)), 401
+            return error_response("Token is missing", 401), 401
 
         if not token.startswith("Bearer "):
-            return jsonify(error_response("Invalid token format.  Should be 'Bearer <token>'", 401)), 401
+            return error_response("Invalid token format.  Should be 'Bearer <token>'", 401), 401
         try:
             token = token.split(" ")[1]
         except IndexError:
-            return jsonify(error_response("Invalid token format.", 401)), 401
+            return error_response("Invalid token format.", 401), 401
 
         payload = decode_token(token)
         if not payload:
-            return jsonify(error_response("Invalid or expired token", 401)), 401
+            return error_response("Invalid or expired token", 401), 401
 
         g.user_id = payload["user_id"]
         return f(*args, **kwargs)
@@ -294,14 +295,6 @@ class APIException(Exception):
 
     def to_dict(self):
         return {"message": self.message}
-
-
-# Function to generate standardized error responses
-def error_response(message, status_code):
-    """
-    Generates a standardized error response.
-    """
-    return {"error": {"message": message, "code": status_code}}
 
 
 # Schema Definitions (Marshmallow)
@@ -402,17 +395,17 @@ class UserRegister(Resource):
             put_db_connection(conn)
 
             token = generate_token(user_id)
-            return jsonify({"message": "User registered successfully", "token": token}), 201
+            return {"message": "User registered successfully", "token": token}, 201
         except ValidationError as err:
-            return jsonify(error_response(err.messages, 400)), 400
+            return error_response(err.messages, 400), 400
         except APIException as e:
-            return jsonify(error_response(e.message, e.status_code)), e.status_code
+            return error_response(e.message, e.status_code), e.status_code
         except Exception as e:
             conn = getattr(g, 'conn', None)
             if conn:
                 put_db_connection(conn)
             print(f"Error registering user: {e}")
-            return jsonify(error_response("An error occurred during registration", 500)), 500
+            return error_response("An error occurred during registration", 500), 500
 
 
 
@@ -471,7 +464,7 @@ class UserLogin(Resource):
                     cursor.execute("UPDATE users SET last_login = NOW() WHERE id = %s", (user["id"],))
                     conn.commit()
                     put_db_connection(conn)
-                    return jsonify({"message": "User logged in successfully", "token": token}), 200
+                    return {"message": "User logged in successfully", "token": token}, 200
                 else:
                     put_db_connection(conn)
                     raise APIException("Invalid credentials", 401)
@@ -479,15 +472,15 @@ class UserLogin(Resource):
                 put_db_connection(conn)
                 raise APIException("Invalid credentials", 401)
         except ValidationError as err:
-            return jsonify(error_response(err.messages, 400)), 400
+            return error_response(err.messages, 400), 400
         except APIException as e:
-            return jsonify(error_response(e.message, e.status_code)), e.status_code
+            return error_response(e.message, e.status_code), e.status_code
         except Exception as e:
             conn = getattr(g, 'conn', None)
             if conn:
                 put_db_connection(conn)
             print(f"Error logging in: {e}")
-            return jsonify(error_response("An error occurred during login", 500)), 500
+            return error_response("An error occurred during login", 500), 500
 
 
 # Hotspot Registration Resource
@@ -557,17 +550,17 @@ class HotspotRegister(Resource):
             hotspot_id = cursor.fetchone()["hotspot_id"]
             conn.commit()
             put_db_connection(conn)
-            return jsonify({"message": "Hotspot registered successfully", "hotspot_id": hotspot_id}), 201
+            return {"message": "Hotspot registered successfully", "hotspot_id": hotspot_id}, 201
         except ValidationError as err:
-            return jsonify(error_response(err.messages, 400)), 400
+            return error_response(err.messages, 400), 400
         except APIException as e:
-            return jsonify(error_response(e.message, e.status_code)), e.status_code
+            return error_response(e.message, e.status_code), e.status_code
         except Exception as e:
             conn = getattr(g, 'conn', None)
             if conn:
                 put_db_connection(conn)
             print(f"Error registering hotspot: {e}")
-            return jsonify(error_response("An error occurred during hotspot registration", 500)), 500
+            return error_response("An error occurred during hotspot registration", 500), 500
 
 
 # Hotspot Details Resource
@@ -617,7 +610,7 @@ class HotspotDetails(Resource):
               $ref: '#/definitions/ErrorResponse'
         """
         if not isinstance(hotspot_id, int) or hotspot_id <= 0:
-            return jsonify(error_response("Invalid hotspot ID", 400)), 400
+            return error_response("Invalid hotspot ID", 400), 400
         try:
             conn, cursor = get_db_connection()
             cursor.execute("SELECT * FROM hotspots WHERE hotspot_id = %s", (hotspot_id,))
@@ -625,17 +618,17 @@ class HotspotDetails(Resource):
             put_db_connection(conn)
 
             if hotspot:
-                return jsonify({"hotspot": hotspot}), 200
+                return {"hotspot": hotspot}, 200
             else:
                 raise APIException("Hotspot not found", 404)
         except APIException as e:
-            return jsonify(error_response(e.message, e.status_code)), e.status_code
+            return error_response(e.message, e.status_code), e.status_code
         except Exception as e:
             conn = getattr(g, 'conn', None)
             if conn:
                 put_db_connection(conn)
             print(f"Error retrieving hotspot details: {e}")
-            return jsonify(error_response("An error occurred while retrieving hotspot details", 500)), 500
+            return error_response("An error occurred while retrieving hotspot details", 500), 500
 
 
 
@@ -727,17 +720,17 @@ class DataUsage(Resource):
 
             conn.commit()
             put_db_connection(conn)
-            return jsonify({"message": "Data usage logged successfully"}), 201
+            return {"message": "Data usage logged successfully"}, 201
         except ValidationError as err:
-            return jsonify(error_response(err.messages, 400)), 400
+            return error_response(err.messages, 400), 400
         except APIException as e:
-            return jsonify(error_response(e.message, e.status_code)), e.status_code
+            return error_response(e.message, e.status_code), e.status_code
         except Exception as e:
             conn = getattr(g, 'conn', None)
             if conn:
                 put_db_connection(conn)
             print(f"Error logging data usage: {e}")
-            return jsonify(error_response("An error occurred while logging data usage", 500)), 500
+            return error_response("An error occurred while logging data usage", 500), 500
 
 
 
