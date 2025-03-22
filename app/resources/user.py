@@ -196,6 +196,9 @@ class UserDetails(Resource):
         Handles user details.
         """
         try:
+            if not hasattr(g, 'user') or 'user_id' not in g.user:
+                return {"message": "User not authenticated"}, 401
+            
             user_id = g.user["user_id"]
             logging.debug(f"Fetching details for user_id: {user_id}")
             conn, cursor = get_db_connection()
