@@ -50,10 +50,12 @@ def init_db_connection_pool():
 from app.resources import user, hotspot, data_usage, organization
 
 # Add resources to the API
-api.add_resource(user.UserRegister, "/register")
-api.add_resource(user.UserLogin, "/login")
+api.add_resource(user.UserRegister, "/user/register")
+api.add_resource(user.UserLogin, "/user/login")
+api.add_resource(user.UserPasswordChange, "/user/password_change")
+api.add_resource(user.UserDetails, "/user/<int:user_id>")
 api.add_resource(hotspot.HotspotRegister, "/hotspot/register")
 api.add_resource(hotspot.HotspotDetails, "/hotspot/<int:hotspot_id>")
-api.add_resource(data_usage.DataCheck, "/data_check")
-api.add_resource(data_usage.DataUsage, "/data_usage")
+api.add_resource(data_usage.DataCheck, "/data/check")
+api.add_resource(data_usage.DataUsage, "/data/usage")
 api.add_resource(organization.ProviderRegister, "/provider/register")

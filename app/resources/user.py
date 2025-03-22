@@ -105,3 +105,77 @@ class UserLogin(Resource):
                 put_db_connection(conn)
             print(f"Error logging in: {e}")
             return {"message": "An error occurred during login"}, 500
+        
+class UserPasswordChange(Resource):
+    """
+    API Resource for changing passwords
+    """
+    @swag_from('app/docs/user_login.yml')
+    def post(self):
+        """
+        Handles changing passwords
+        """
+        try:
+            data = request.get_json()
+            user_schema = UserSchema()
+            validated_data = user_schema.load(data,partial=('username', 'password'))
+            email = validated_data["email"]
+            old_password = validated_data["old_password"]
+            new_password = validated_data["new_password"]
+
+            conn, cursor = get_db_connection()
+            cursor.execute("SELECT * FROM users WHERE email = %s", (email,))
+            user = cursor.fetchone()
+
+            if user:
+                if bcrypt.checkpw(old_password.encode("utf-8"), user["password_hash"].encode("utf-8")):
+                    hashed_password = bcrypt.hashpw(new_password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+                    cursor.execute("UPDATE users SET password_hash = %s WHERE user_id = %s", (hashed_password, user["user_id"]))
+                    conn.commit()
+                    put_db_connection(conn)
+                    return {"message": "Password changed successfully"}, 200
+                else:
+                    put_db_connection(conn)
+                    raise APIException("Invalid credentials", 401)
+            else:
+                put_db_connection(conn)
+                raise APIException("Invalid credentials", 401)
+        except ValidationError as err:
+            return {"errors": err.messages}, 400
+        except APIException as e:
+            return {"message": e.message}, e.status_code
+        except Exception as e:
+            conn = getattr(g, 'conn', None)
+            if conn:
+                put_db_connection(conn)
+            print(f"Error changing password: {e}")
+            return {"message": "An error occurred during password change"}, 500
+        
+# User Details Resource
+class UserDetails(Resource):
+    """
+    API resource for user details.
+    """
+    @swag_from('app/docs/user_details.yml')
+    def get(self):
+        """
+        Handles user details.
+        """
+        try:
+            user_id = g.user["user_id"]
+            conn, cursor = get_db_connection()
+            cursor.execute("SELECT username, email, registration_date, last_login FROM users WHERE user_id = %s", (user_id,))
+            user = cursor.fetchone()
+            if user:
+                put_db_connection(conn)
+                return {"user": user}, 200
+            else:
+                put_db_connection(conn)
+                return {"message": "User not found"}, 404
+        except Exception as e:
+            conn = getattr(g, 'conn', None)
+            if conn:
+                put_db_connection(conn)
+            print(f"Error getting user details: {e}")
+            return {"message": "An error occurred while getting user details"}, 500
+
