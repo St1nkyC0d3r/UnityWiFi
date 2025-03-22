@@ -213,7 +213,6 @@ def generate_token(user_id: int) -> str:
     token = encode(payload, JWT_SECRET_KEY, algorithm=JWT_ALGORITHM)
     return token
 
-
 # Function to decode JWT token
 def decode_token(token: str) -> Dict[str, Any]:
     """
@@ -227,7 +226,6 @@ def decode_token(token: str) -> Dict[str, Any]:
     except Exception as e:
         print(f"Error decoding token: {e}")
         return None
-
 
 # Authentication decorator to protect routes
 def token_required(f):
@@ -255,7 +253,6 @@ def token_required(f):
         return f(*args, **kwargs)
 
     return decorated
-
 
 def execute_query(query: str, params: tuple = None, fetchone: bool = False, commit: bool = True) -> Any:
     """
@@ -290,7 +287,6 @@ def execute_query(query: str, params: tuple = None, fetchone: bool = False, comm
     finally:
         put_db_connection(conn)
 
-
 def validate_unique_bssid_ssid(ssid, bssid):
     """
     Checks if a BSSID and SSID combination is unique in the database.
@@ -312,7 +308,6 @@ def validate_unique_bssid_ssid(ssid, bssid):
             raise APIException("A hotspot with this BSSID and SSID combination already exists.", 400)
     finally:
         put_db_connection(conn)
-
 
 def check_data_usage_limit(user_id: int, hotspot_id: int, data_used: float):
     """
@@ -336,6 +331,21 @@ def check_data_usage_limit(user_id: int, hotspot_id: int, data_used: float):
 
     if current_usage + data_used > data_usage_limit:
         raise APIException(f"Data usage limit ({data_usage_limit} MB) exceeded for user {user_id}", 400)
+
+def get_user_id(email: str, password: str):
+    conn, cursor = get_db_connection()
+    cursor.execute("SELECT * FROM users WHERE email = %s", (email,))
+    user = cursor.fetchone()
+    if user:
+        if bcrypt.checkpw(password.encode("utf-8"), user["password_hash"].encode("utf-8")):
+            put_db_connection(conn)
+            return user["user_id"]
+        else:
+            put_db_connection(conn)
+            raise APIException("Invalid credentials", 401)
+    else:
+        put_db_connection(conn)
+        raise APIException("Invalid credentials", 401)
 
 
 
@@ -362,6 +372,8 @@ class DatabaseError(Exception):
         self.message = message
 
 
+
+
 # Schema Definitions (Marshmallow)
 class UserSchema(Schema):
     """
@@ -371,11 +383,11 @@ class UserSchema(Schema):
     email = fields.Email(required=True, validate=validate.Length(min=1, max=255))
     password = fields.Str(required=True, validate=validate.Length(min=8))
 
-
 class HotspotSchema(Schema):
     """
     Schema for hotspot registration.
     """
+    # Hotspots
     ssid = fields.Str(required=True, validate=validate.Length(min=1, max=255))
     bssid = fields.Str(required=True, validate=is_valid_bssid)
     max_signal_strength = fields.Integer(required=False, validate=validate.Range(min=1, max=100))
@@ -383,9 +395,12 @@ class HotspotSchema(Schema):
     frequency = fields.Integer(required=False)
     hotspot_details = fields.Str(required=False)
 
+    # user_id retreval
     username = fields.Str(required=True, validate=validate.Length(min=1, max=255))
     password = fields.Str(required=True, validate=validate.Length(min=8))
 
+
+    # location_id retrival
     latitude = fields.Float(required=True)
     longitude = fields.Float(required=True)
     altitude = fields.Integer(required=False)
@@ -395,13 +410,13 @@ class HotspotSchema(Schema):
     postal_code = fields.Str(required=False, validate=validate.Length(min=1,max=20))
     geometry = fields.Str(required=False)                           #################################################################### AHAHA gonna sort this out soon (ish)
 
+    # network_id retrival
     encryption_method = fields.Integer(required=True, validate=is_security_type_valid)
     authentication_method = fields.Str(required=True, validate=is_network_authentication_type_valid)
     qos_support = fields.Boolean(required=True)
     ipv4_address = fields.IPv4(required=True)
     ipv6_address = fields.IPv6(required=True)
     network_details = fields.Str(required=False)
-
 
 class DataUsageSchema(Schema):
     """
@@ -416,7 +431,8 @@ class OrganizationsSchema(Schema):
     Schema for organization registration.
     """
     provider_name = fields.Str(required=True, validate=validate.Length(min=1, max=255))
-    contact_email = fields.Email(required=True, validate=is_valid_email)
+    email = fields.Email(required=True, validate=is_valid_email)
+    password = fields.Str(required=True, validate=validate.Length(min=8))
     contact_phone = fields.Str(required=True, validate=validate.Length(min=1, max=20))
     website = fields.Str(required=False, validate=is_valid_url)
     details = fields.Str(required=False)
@@ -433,6 +449,7 @@ class LocationsSchema(Schema):
     country = fields.Str(required=False, validate=validate.Length(min=1, max=100))
     postal_code = fields.Str(required=False, validate=validate.Length(min=1, max=20))
     geometry = fields.Str(required=False)
+
 
 
 # User Registration Resource
@@ -514,8 +531,6 @@ class UserRegister(Resource):
             print(f"Error registering user: {e}")
             return error_response("An error occurred during registration", 500), 500
 
-
-
 # User Login Resource
 class UserLogin(Resource):
     """
@@ -588,7 +603,6 @@ class UserLogin(Resource):
                 put_db_connection(conn)
             print(f"Error logging in: {e}")
             return error_response("An error occurred during login", 500), 500
-
 
 # Hotspot Registration Resource
 class HotspotRegister(Resource):
@@ -670,7 +684,7 @@ class HotspotRegister(Resource):
 
 
             # Check valid user.
-
+            conn, cursor = get_db_connection()
             cursor.execute("SELECT * FROM users WHERE username = %s", (username,))
             user = cursor.fetchone()
 
@@ -679,6 +693,7 @@ class HotspotRegister(Resource):
                     cursor.execute("UPDATE users SET last_login = NOW() WHERE user_id = %s", (user["user_id"],))
                     conn.commit()
                     put_db_connection(conn)
+                    conn, cursor = get_db_connection()
                     cursor.execute("SELECT provider_id FROM organizations WHERE user_id = %s", (user["user_id"],))
                     existing_provider = cursor.fetchone()
                     if existing_provider:
@@ -723,7 +738,6 @@ class HotspotRegister(Resource):
                 put_db_connection(conn)
             print(f"Error registering hotspot: {e}")
             return error_response("An error occurred during hotspot registration", 500), 500
-
 
 # Hotspot Details Resource
 class HotspotDetails(Resource):
@@ -792,10 +806,8 @@ class HotspotDetails(Resource):
             print(f"Error retrieving hotspot details: {e}")
             return error_response("An error occurred while retrieving hotspot details", 500), 500
 
-
-
-# Data Usage Resource
-class DataUsage(Resource):
+# Data Check Resource
+class DataCheck(Resource):
     """
     API resource for logging user data usage.
     """
@@ -874,9 +886,9 @@ class DataUsage(Resource):
                 put_db_connection(conn)
             print(f"Error logging data usage: {e}")
             return error_response("An error occurred while logging data usage", 500), 500
-
-
-class DataPresence(Resource):
+        
+#Data Usage Resource
+class DataUsage(Resource):
     """
     API resource for logging user data usage.
     """
@@ -948,15 +960,97 @@ class DataPresence(Resource):
             print(f"Error logging data usage: {e}")
             return error_response("An error occurred while logging data usage", 500), 500
 
+# Provider Register Resource
+class ProviderRegister(Resource):
+    """
+    API Resource for registering providers
+    """
+    def post(self):
+        """
+        Registers providers.
+
+        tags:
+          - Provider Registration
+        security:
+          - BearerAuth: []
+        parameters:
+          - in: body
+            name: body
+            description: Registration to become a Provider.
+            required: true
+            schema:
+              $ref: '#/definitions/OrganizationsSchema'
+        responses:
+          200:
+            description: Provider registered successfully.
+            schema:
+              type: object
+              properties:
+                message:
+                  type: string
+          400:
+            description: Bad request.
+            schema:
+              $ref: '#/definitions/ErrorResponse'
+          401:
+            description: Unauthorized.
+            schema:
+              $ref: '#/definitions/ErrorResponse'
+          500:
+            description: Internal server error.
+            schema:
+              $ref: '#/definitions/ErrorResponse'
+        """
+        try:
+            data = request.get_json()
+            organization_schema = OrganizationsSchema()
+            validated_data = organization_schema.load(data)
+
+            provider_name = validated_data["provider_name"]
+            email = validated_data["email"]
+            password = validated_data["password"]
+            contact_phone = validated_data["contact_phone"]
+            website = validated_data["website"]
+            details = validated_data["details"]
+            user_id = get_user_id(email, password)
+
+            conn, cursor = get_db_connection()
+            cursor.execute("SELECT provider_id FROM organizations WHERE user_id = %s", (user_id,))
+            existing_provider = cursor.fetchone()
+            if existing_provider:
+                put_db_connection(conn)
+                raise APIException("User already registered as provider", 401)
+            else: 
+                cursor.execute("INSERT INTO organizations (provider_name, user_id, contact_phone, website, details) VALUES (%s, %s, %s, %s, %s) RETURNING provider_id", (provider_name, user_id, contact_phone, website, details))
+                provider_id = cursor.fetchone()["provider_id"]
+                conn.commit()
+                put_db_connection(conn)
+
+                return {"message": "Provider registered successfully.", "provider_id": provider_id}, 200
+
+        except ValidationError as err:
+            return error_response(err.messages, 400), 400
+        except APIException as e:
+            return error_response(e.message, e.status_code), e.status_code
+        except Exception as e:
+            conn = getattr(g, 'conn', None)
+            if conn:
+                put_db_connection(conn)
+            print(f"Error registering hotspot: {e}")
+            return error_response("An error occurred during hotspot registration", 500), 500
+
+# Provider Funds Resource
+
+
 
 # Add resources to the API
 api.add_resource(UserRegister, "/register")
 api.add_resource(UserLogin, "/login")
 api.add_resource(HotspotRegister, "/hotspot/register")
 api.add_resource(HotspotDetails, "/hotspot/<int:hotspot_id>")
-api.add_resource(DataPresence, "/data_check")
+api.add_resource(DataCheck, "/data_check")
 api.add_resource(DataUsage, "/data_usage")
-
+api.add_resource(ProviderRegister, "/provider/register")
 
 
 
