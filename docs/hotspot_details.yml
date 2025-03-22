@@ -1,0 +1,60 @@
+summary: Get Hotspot Details
+description: |
+  This endpoint retrieves details for a specific Wi-Fi hotspot, identified 
+  by its unique ID. It requires authentication via a JWT token.
+tags:
+  - Hotspot
+security:
+    - BearerAuth:# Assuming you've defined BearerAuth in your swagger_config
+parameters:
+  - name: hotspot_id
+    in: path
+    description: The ID of the hotspot to retrieve.
+    required: true
+    schema:
+      type: integer
+      format: int32  # Or appropriate integer format
+responses:
+  200:
+    description: Hotspot details retrieved successfully.
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            hotspot:
+              type: object
+              # Define the structure of the hotspot object here
+              # Example (replace with your actual hotspot schema):
+              properties:
+                hotspot_id:
+                  type: integer
+                ssid:
+                  type: string
+                bssid:
+                  type: string
+                # ... other hotspot properties ...
+  400:
+    description: Bad request.
+    content:
+      application/json:
+        schema:
+          $ref: '#/definitions/ErrorResponse'  # Assuming you have ErrorResponse defined
+  401:
+    description: Unauthorized.
+    content:
+      application/json:
+        schema:
+          $ref: '#/definitions/ErrorResponse'  # Assuming you have ErrorResponse defined
+  404:
+    description: Hotspot not found.
+    content:
+      application/json:
+        schema:
+          $ref: '#/definitions/ErrorResponse'  # Assuming you have ErrorResponse defined
+  500:
+    description: Internal server error.
+    content:
+      application/json:
+        schema:
+          $ref: '#/definitions/ErrorResponse'  # Assuming you have ErrorResponse defined

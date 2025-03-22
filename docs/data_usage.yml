@@ -1,0 +1,43 @@
+summary: Log Data Usage
+description: |
+  This endpoint allows users to log their data usage for a specific hotspot.
+tags:
+  - Data Usage
+security:
+  - BearerAuth:
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        $ref: '#/components/schemas/DataUsageSchema'  # Corrected reference
+responses:
+  200:
+    description: Data usage logged successfully.
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            message:
+              type: string
+            usage_id:
+              type: integer
+  400:
+    description: Bad request.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorResponse'
+  401:
+    description: Unauthorized.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorResponse'
+  500:
+    description: Internal server error.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorResponse'

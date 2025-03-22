@@ -12,16 +12,11 @@ from typing import Tuple, Dict, Any
 import bcrypt
 from urllib.parse import urlparse, parse_qs
 from marshmallow import Schema, fields, ValidationError, validate  # Import Marshmallow
-<<<<<<< Updated upstream
 from flasgger import Swagger, swag_from  # Import Swagger
 from common import *
 from validation import *
+import yaml
 
-=======
-from flasgger import Swagger  # Import Swagger
-import os
-from common import error_response, is_valid_url, is_valid_bssid
->>>>>>> Stashed changes
 
 # Load environment variables
 load_dotenv()
@@ -30,124 +25,9 @@ app = Flask(__name__)
 api = Api(app)
 swagger = Swagger(app)
 
-swagger_config = {
-    "swagger": "2.0",
-    "info": {
-        "title": "UnityWiFi API",
-        "description": "API for managing users, hotspots, and data usage for the UnityWiFi platform.",
-        "version": "1.0.0",
-    },
-    "securityDefinitions": {
-        "BearerAuth": {
-            "type": "apiKey",
-            "name": "Authorization",
-            "in": "header",
-            "description": "JWT Bearer token required, e.g., 'Bearer eyJhbGci...'",
-        },
-    },
-    "definitions": {
-        "UserSchema": {
-            "type": "object",
-            "required": ["username", "email", "password"],
-            "properties": {
-                "username": {
-                    "type": "string",
-                    "minLength": 1,
-                    "maxLength": 255,
-                    "description": "User's username."
-                },
-                "email": {
-                    "type": "string",
-                    "format": "email",
-                    "minLength": 1,
-                    "maxLength": 255,
-                    "description": "User's email address."
-                },
-                "password": {
-                    "type": "string",
-                    "minLength": 8,
-                    "description": "User's password (minimum 8 characters)."
-                },
-            },
-        },
-        "HotspotSchema": {
-            "type": "object",
-            "required": ["ssid", "bssid", "location_id", "network_id"],
-            "properties": {
-                "ssid": {
-                    "type": "string",
-                    "minLength": 1,
-                    "maxLength": 255,
-                    "description": "SSID of the hotspot."
-                },
-                "bssid": {
-                    "type": "string",
-                    "pattern": "^([0-9A-Fa-f]{2}:){5}([0-9A-Fa-f]{2})$",
-                    "description": "BSSID of the hotspot (MAC address)."
-                },
-                "location_id": {
-                    "type": "integer",
-                    "minimum": 1,
-                    "description": "ID of the location."
-                },
-                "network_id": {
-                    "type": "integer",
-                    "minimum": 1,
-                    "description": "ID of the network."
-                },
-                 "provider_id": {
-                    "type": "integer",
-                    "minimum": 1,
-                    "description": "ID of the provider (organization).",
-                    "nullable": True
-                },
-            },
-        },
-        "DataUsageSchema": {
-            "type": "object",
-            "required": ["user_id", "hotspot_id", "data_used"],
-            "properties": {
-                "user_id": {
-                    "type": "integer",
-                    "minimum": 1,
-                    "description": "ID of the user."
-                },
-                "hotspot_id": {
-                    "type": "integer",
-                    "minimum": 1,
-                    "description": "ID of the hotspot."
-                },
-                "data_used": {
-                    "type": "number",
-                    "format": "float",
-                    "minimum": 0,
-                    "description": "Data used in MB."
-                },
-            },
-        },
-        "ErrorResponse": {
-            "type": "object",
-            "properties": {
-                "error": {
-                    "type": "object",
-                    "properties": {
-                        "message": {
-                            "type": "string",
-                            "description": "Error message."
-                        },
-                        "code": {
-                            "type": "integer",
-                            "description": "HTTP status code."
-                        }
-                    },
-                    "required": ["message", "code"]
-                }
-            },
-            "required": ["error"]
-        }
-    }
-}
-
+with open('swagger_config.yml', 'r') as f:
+    swagger_config = yaml.safe_load(f)
+swagger = Swagger(app, config=swagger_config)
 
 # Database connection details from environment variables
 DB_HOST = os.environ.get("DB_HOST")
@@ -264,7 +144,6 @@ def execute_query(query: str, params: tuple = None, fetchone: bool = False, comm
     """
     Executes a database query and handles connection management.
 
-<<<<<<< Updated upstream
     Args:
         query (str): The SQL query to execute.
         params (tuple, optional): Parameters to pass to the query. Defaults to None.
@@ -356,9 +235,6 @@ def get_user_id(email: str, password: str):
 
 
 
-=======
-
->>>>>>> Stashed changes
 
 
 
@@ -418,11 +294,10 @@ class HotspotSchema(Schema):
     # Hotspots
     ssid = fields.Str(required=True, validate=validate.Length(min=1, max=255))
     bssid = fields.Str(required=True, validate=is_valid_bssid)
-<<<<<<< Updated upstream
-    max_signal_strength = fields.Integer(required=False, validate=validate.Range(min=1, max=100))
-    channel = fields.Integer(required=False, validate=validate.Range(min=1, max=14))
-    frequency = fields.Integer(required=False)
-    hotspot_details = fields.Str(required=False)
+    max_signal_strength = fields.Integer(required=False, validate=validate.Range(min=1, max=100), allow_none=True, load_default=None)
+    channel = fields.Integer(required=False, validate=validate.Range(min=1, max=14), allow_none=True, load_default=None)
+    frequency = fields.Integer(required=False, allow_none=True, load_default=None)
+    hotspot_details = fields.Str(required=False, allow_none=True, load_default=None)
 
     # user_id retreval
     username = fields.Str(required=True, validate=validate.Length(min=1, max=255))
@@ -432,12 +307,12 @@ class HotspotSchema(Schema):
     # location_id retrival
     latitude = fields.Float(required=True)
     longitude = fields.Float(required=True)
-    altitude = fields.Integer(required=False)
-    address = fields.Str(required=False, validate=validate.Length(min=1,max=255))
-    city = fields.Str(required=False, validate=validate.Length(min=1,max=100))
-    country = fields.Str(required=False, validate=validate.Length(min=1,max=100))
-    postal_code = fields.Str(required=False, validate=validate.Length(min=1,max=20))
-    geometry = fields.Str(required=False)                           #################################################################### AHAHA gonna sort this out soon (ish)
+    altitude = fields.Integer(required=False, allow_none=True, load_default=None)
+    address = fields.Str(required=False, validate=validate.Length(min=1,max=255), allow_none=True, load_default=None)
+    city = fields.Str(required=False, validate=validate.Length(min=1,max=100), allow_none=True, load_default=None)
+    country = fields.Str(required=False, validate=validate.Length(min=1,max=100), allow_none=True, load_default=None)
+    postal_code = fields.Str(required=False, validate=validate.Length(min=1,max=20), allow_none=True, load_default=None)
+    geometry = fields.Str(required=False, allow_none=True, load_default=None)                           #################################################################### AHAHA gonna sort this out soon (ish)
 
     # network_id retrival
     encryption_method = fields.Integer(required=True, validate=is_security_type_valid)
@@ -445,17 +320,7 @@ class HotspotSchema(Schema):
     qos_support = fields.Boolean(required=True)
     ipv4_address = fields.IPv4(required=True)
     ipv6_address = fields.IPv6(required=True)
-    network_details = fields.Str(required=False)
-=======
-    location_id = fields.Integer(required=True, validate=validate.Range(min=1))
-    network_id = fields.Integer(required=True, validate=validate.Range(min=1))
-    provider_id = fields.Integer(required=False, validate=validate.Range(min=1))
-    security_type = fields.Integer(required=True, validate=is_security_type_valid)
-    max_signal_strength = fields.Integer(required=False, validate=validate.Range(min=1, max=100))
-    channel = fields.Integer(required=False, validate=validate.Range(min=1, max=14))
-    frequency = fields.Integer(required=False)
-    details = fields.Str(required=False)
->>>>>>> Stashed changes
+    network_details = fields.Str(required=False, allow_none=True, load_default=None)
 
 class DataUsageSchema(Schema):
     """
@@ -470,46 +335,24 @@ class OrganizationsSchema(Schema):
     Schema for organization registration.
     """
     provider_name = fields.Str(required=True, validate=validate.Length(min=1, max=255))
-<<<<<<< Updated upstream
     email = fields.Email(required=True, validate=is_valid_email)
     password = fields.Str(required=True, validate=validate.Length(min=8))
-=======
-    contact_email = fields.Email(required=True, validate=is_valid_email)
->>>>>>> Stashed changes
     contact_phone = fields.Str(required=True, validate=validate.Length(min=1, max=20))
-    website = fields.Str(required=False, validate=is_valid_url)
-    details = fields.Str(required=False)
+    website = fields.Str(required=False, validate=is_valid_url, allow_none=True, load_default=None)
+    details = fields.Str(required=False, allow_none=True, load_default=None)
 
-<<<<<<< Updated upstream
-=======
-class NetworksSchema(Schema):
-    """
-    Schema for network registration.
-    """
-    encryption_method = fields.Str(required=True, validate=is_security_type_valid)
-    authentication_method = fields.Str(required=True, validate=is_network_authentication_type_valid)
-    qos_support = fields.Boolean(required=False)
-    ipv4_address = fields.IPv4(required=False)
-    ipv6_address = fields.IPv6(required=False)
-    details = fields.Str(required=False)
-
->>>>>>> Stashed changes
 class LocationsSchema(Schema):
     """
     Schema for location registration.
     """
     latitude = fields.Float(required=True)
     longitude = fields.Float(required=True)
-    altitude = fields.Float(required=False)
-    address = fields.Str(required=False, validate=validate.Length(min=1, max=255))
-    city = fields.Str(required=False, validate=validate.Length(min=1, max=100))
-    country = fields.Str(required=False, validate=validate.Length(min=1, max=100))
-    postal_code = fields.Str(required=False, validate=validate.Length(min=1, max=20))
-    geometry = fields.Str(required=False)
-<<<<<<< Updated upstream
-
-=======
->>>>>>> Stashed changes
+    altitude = fields.Float(required=False, allow_none=True, load_default=None)
+    address = fields.Str(required=False, validate=validate.Length(min=1, max=255), allow_none=True, load_default=None)
+    city = fields.Str(required=False, validate=validate.Length(min=1, max=100), allow_none=True, load_default=None)
+    country = fields.Str(required=False, validate=validate.Length(min=1, max=100), allow_none=True, load_default=None)
+    postal_code = fields.Str(required=False, validate=validate.Length(min=1, max=20), allow_none=True, load_default=None)
+    geometry = fields.Str(required=False, allow_none=True, load_default=None)
 
 
 # User Registration Resource
@@ -517,6 +360,7 @@ class UserRegister(Resource):
     """
     API resource for user registration.
     """
+    @swag_from('docs/user_register.yml')
     def post(self):
         """
         Handles user registration.
@@ -596,7 +440,7 @@ class UserLogin(Resource):
     """
     API resource for user login.
     """
-
+    @swag_from('docs/user_login.yml')
     def post(self):
         """
         Handles user login.
@@ -642,11 +486,7 @@ class UserLogin(Resource):
 
             if user:
                 if bcrypt.checkpw(password.encode("utf-8"), user["password_hash"].encode("utf-8")):
-<<<<<<< Updated upstream
                     token = generate_token(user["user_id"])
-=======
-                    token = generate_token(user["id"])
->>>>>>> Stashed changes
                     cursor.execute("UPDATE users SET last_login = NOW() WHERE user_id = %s", (user["user_id"],))
                     conn.commit()
                     put_db_connection(conn)
@@ -675,6 +515,7 @@ class HotspotRegister(Resource):
     """
 
     @token_required
+    @swag_from('docs/hotspot_register.yml')
     def post(self):
         """
         Registers a new Wi-Fi hotspot.
@@ -809,6 +650,7 @@ class HotspotDetails(Resource):
     API resource for retrieving hotspot details by ID.
     """
     @token_required
+    @swag_from('docs/hotspot_details.yml')
     def get(self, hotspot_id: int):
         """
         Retrieves hotspot details by ID.
@@ -876,6 +718,7 @@ class DataCheck(Resource):
     API resource for logging user data usage.
     """
     @token_required
+    @swag_from('docs/data_check.yml')
     def post(self):
         """
         Logs user data usage.
@@ -892,7 +735,7 @@ class DataCheck(Resource):
             schema:
               $ref: '#/definitions/DataUsageSchema'
         responses:
-          201:
+          200:
             description: Data usage logged successfully.
             schema:
               type: object
@@ -939,7 +782,7 @@ class DataCheck(Resource):
             else:
                 data_left = BANDWIDTH_LIMIT - total_usage
 
-            return {"message": "Not reached limit", "data_left": data_left}, 201
+            return {"message": "Not reached limit", "data_left": data_left}, 200
         except ValidationError as err:
             return error_response(err.messages, 400), 400
         except APIException as e:
@@ -1029,6 +872,7 @@ class ProviderRegister(Resource):
     """
     API Resource for registering providers
     """
+    @swag_from('docs/provider_register.yml')
     def post(self):
         """
         Registers providers.

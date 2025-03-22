@@ -1,0 +1,38 @@
+summary: User Registration
+description: |
+  This endpoint allows new users to register by providing a username, 
+  email, and password. Upon successful registration, a JWT token is 
+  returned for authentication.
+tags:
+  - User
+parameters:
+    - in: body
+      name: body
+      description: User registration details.
+      required: true
+      schema:
+        $ref: '#/definitions/UserSchema'  # Assuming you have UserSchema defined
+responses:
+  201:
+    description: User registered successfully.
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            message:
+              type: string
+            token:
+              type: string
+  400:
+    description: Bad request.
+    content:
+      application/json:
+        schema:
+          $ref: '#/definitions/ErrorResponse'  # Assuming you have ErrorResponse defined
+  500:
+    description: Internal server error.
+    content:
+      application/json:
+        schema:
+          $ref: '#/definitions/ErrorResponse'  # Assuming you have ErrorResponse defined

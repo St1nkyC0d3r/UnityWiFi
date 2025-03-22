@@ -1,0 +1,45 @@
+summary: Register a Hotspot
+description: |
+  This endpoint allows providers to register a new Wi-Fi hotspot. 
+  It requires authentication via a JWT token.
+tags:
+  - Hotspot
+security:
+    - BearerAuth:# Assuming you've defined BearerAuth in your swagger_config
+parameters:
+  - in: body
+    name: body
+    description: Hotspot registration details.
+    required: true
+    schema:
+      $ref: '#/definitions/HotspotSchema'  # Assuming you have HotspotSchema defined
+responses:
+  201:
+    description: Hotspot registered successfully.
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            message:
+              type: string
+            hotspot_id:
+              type: integer
+  400:
+    description: Bad request.
+    content:
+      application/json:
+        schema:
+          $ref: '#/definitions/ErrorResponse'  # Assuming you have ErrorResponse defined
+  401:
+    description: Unauthorized.
+    content:
+      application/json:
+        schema:
+          $ref: '#/definitions/ErrorResponse'  # Assuming you have ErrorResponse defined
+  500:
+    description: Internal server error.
+    content:
+      application/json:
+        schema:
+          $ref: '#/definitions/ErrorResponse'  # Assuming you have ErrorResponse defined

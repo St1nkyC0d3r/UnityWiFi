@@ -1,0 +1,61 @@
+summary: Check Data Usage
+description: |
+  This endpoint checks the data usage of a user for a specific hotspot. 
+  It returns information about whether the user has reached their limit 
+  and how much data is remaining.  It requires authentication via a JWT token.
+tags:
+  - Data Usage
+security:
+    - BearerAuth:# Assuming you've defined BearerAuth in your swagger_config
+parameters:
+  - in: body
+    name: body
+    description: Data usage check details.
+    required: true
+    schema:
+      type: object
+      properties:
+        user_id:
+          type: integer
+          description: The ID of the user.
+        hotspot_id:
+          type: integer
+          description: The ID of the hotspot.
+responses:
+  200:
+    description: Data usage check successful.
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            message:
+              type: string
+            data_left:
+              type: number
+              format: float
+              description: The amount of data remaining (e.g., in MB).
+  400:
+    description: Bad request.
+    content:
+      application/json:
+        schema:
+          $ref: '#/definitions/ErrorResponse'  # Assuming you have ErrorResponse defined
+  401:
+    description: Unauthorized.
+    content:
+      application/json:
+        schema:
+          $ref: '#/definitions/ErrorResponse'  # Assuming you have ErrorResponse defined
+  402:
+    description: Payment Required.
+    content:
+      application/json:
+        schema:
+          $ref: '#/definitions/ErrorResponse'  # Assuming you have ErrorResponse defined
+  500:
+    description: Internal server error.
+    content:
+      application/json:
+        schema:
+          $ref: '#/definitions/ErrorResponse'  # Assuming you have ErrorResponse defined

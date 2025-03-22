@@ -1,143 +1,306 @@
+# Description: Configuration file for Swagger UI.
 {
-    "swagger": "2.0",
+    "openapi": "3.0.0",  # Use OpenAPI 3.0.0
     "info": {
         "title": "UnityWiFi API",
         "description": "API for managing users, hotspots, and data usage for the UnityWiFi platform.",
-        "version": "1.0.0"
+        "version": "1.0.0",
     },
-    "securityDefinitions": {
-        "BearerAuth": {
-            "type": "apiKey",
-            "name": "Authorization",
-            "in": "header",
-            "description": "JWT Bearer token required, e.g., 'Bearer eyJhbGci...'"
-        }
-    },
-    "definitions": {
-        "UserSchema": {
-            "type": "object",
-            "required": ["username", "email", "password"],
-            "properties": {
-                "username": {
-                    "type": "string",
-                    "minLength": 1,
-                    "maxLength": 255,
-                    "description": "User's username."
-                },
-                "email": {
-                    "type": "string",
-                    "format": "email",
-                    "minLength": 1,
-                    "maxLength": 255,
-                    "description": "User's email address."
-                },
-                "password": {
-                    "type": "string",
-                    "minLength": 8,
-                    "description": "User's password (minimum 8 characters)."
-                }
-            }
-        },
-        "HotspotSchema": {
-            "type": "object",
-            "required": ["ssid", "bssid", "latitude", "longitude", "encryption_method"],
-            "properties": {
-                "ssid": {
-                    "type": "string",
-                    "minLength": 1,
-                    "maxLength": 255,
-                    "description": "SSID of the hotspot."
-                },
-                "bssid": {
-                    "type": "string",
-                    "pattern": "^([0-9A-Fa-f]{2}:){5}([0-9A-Fa-f]{2})$",
-                    "description": "BSSID of the hotspot (MAC address)."
-                },
-                "latitude": {
-                    "type": "number",
-                    "format": "float",
-                    "description": "Latitude of the location"
-                },
-                "longitude" : {
-                    "type": "number",
-                    "format": "float",
-                    "description": "Longitude of the location"
-                },
-                "network_id": {
-                    "type": "integer",
-                    "minimum": 1,
-                    "description": "ID of the network."
-                },
-                 "provider_id": {
-                    "type": "integer",
-                    "minimum": 1,
-                    "description": "ID of the provider (organization).",
-                    "nullable": True
-                }
-            }
-        },
-        "DataUsageSchema": {
-            "type": "object",
-            "required": ["user_id", "hotspot_id", "data_used"],
-            "properties": {
-                "user_id": {
-                    "type": "integer",
-                    "minimum": 1,
-                    "description": "ID of the user."
-                },
-                "hotspot_id": {
-                    "type": "integer",
-                    "minimum": 1,
-                    "description": "ID of the hotspot."
-                },
-                "data_used": {
-                    "type": "number",
-                    "format": "float",
-                    "minimum": 0,
-                    "description": "Data used in MB."
-                }
-            }
-        },
-        "OrganizationsSchema": {
-            "type": "object",
-            "required": ["provider_name", "contact_email", "contact_phone"],
-            "properties": {
-                "provider_name": {
-                    "type": "string",
-                    "minLength": 1,
-                    "maxLength": 255,
-                    "description": "Name of the entity providing UnityWiFi with Access Points."
-                },
-                "contact_email": {
-                    "type": "string",
-                    "description": "Email of the provider."
-                },
-                "contact_phone": {
-                    "type": "string",
-                    "maxLength": 20,
-                    "description": "Phone number for the provider."
-                }
-            }
-        },
-        "ErrorResponse": {
-            "type": "object",
-            "properties": {
-                "error": {
-                    "type": "object",
-                    "properties": {
-                        "message": {
-                            "type": "string",
-                            "description": "Error message."
-                        },
-                        "code": {
-                            "type": "integer",
-                            "description": "HTTP status code."
-                        }
-                    },
-                    "required": ["message", "code"]
-                }
+    "components": {  # OpenAPI 3.0 uses 'components'
+        "securitySchemes": {  # 'securitySchemes' is within 'components'
+            "BearerAuth": {
+                "type": "http",  # Use 'http' for Bearer authentication
+                "scheme": "bearer",
+                "bearerFormat": "JWT",  # Specify JWT format
+                "description": "JWT Bearer token required, e.g., 'Bearer eyJhbGci...'",
             },
-            "required": ["error"]
+        },
+        "schemas": {  # 'schemas' is within 'components'
+            "UserSchema": {
+                "type": "object",
+                "required": ["username", "email", "password"],
+                "properties": {
+                    "username": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 255,
+                        "description": "User's username.",
+                        "example": "johndoe"
+                    },
+                    "email": {
+                        "type": "string",
+                        "format": "email",  # Use 'email' format
+                        "minLength": 1,
+                        "maxLength": 255,
+                        "description": "User's email address.",
+                        "example": "john.doe@example.com"
+                    },
+                    "password": {
+                        "type": "string",
+                        "minLength": 8,
+                        "description": "User's password (minimum 8 characters).",
+                        "example": "P@sswOrd123"
+                    },
+                },
+            },
+            "HotspotSchema": {
+                "type": "object",
+                "required": ["ssid", "bssid", "username", "password", "latitude", "longitude", "encryption_method", "authentication_method", "qos_support", "ipv4_address", "ipv6_address"],
+                "properties": {
+                    "ssid": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 255,
+                        "description": "SSID of the hotspot.",
+                        "example": "MyWiFi"
+                    },
+                    "bssid": {
+                        "type": "string",
+                        "pattern": "^([0-9A-Fa-f]{2}:){5}([0-9A-Fa-f]{2})$",
+                        "description": "BSSID of the hotspot (MAC address).",
+                        "example": "00:11:22:33:44:55"
+                    },
+                    "max_signal_strength": {
+                        "type": "integer",
+                        "format": "int32",
+                        "minimum": 1,
+                        "maximum": 100,
+                        "description": "Maximum signal strength (1-100).",
+                        "nullable": True,
+                        "example": 75
+                    },
+                    "channel": {
+                        "type": "integer",
+                        "format": "int32",
+                        "minimum": 1,
+                        "maximum": 14,
+                        "description": "WiFi channel (1-14).",
+                        "nullable": True,
+                        "example": 6
+                    },
+                    "frequency": {
+                        "type": "integer",
+                        "format": "int32",
+                        "description": "WiFi frequency in MHz.",
+                        "nullable": True,
+                        "example": 2437
+                    },
+                    "hotspot_details": {
+                        "type": "string",
+                        "description": "Additional details about the hotspot.",
+                        "nullable": True,
+                        "example": "Located in the main lobby."
+                    },
+                    "username": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 255,
+                        "description": "Username of the registering user.",
+                        "example": "provideruser"
+                    },
+                    "password": {
+                        "type": "string",
+                        "minLength": 8,
+                        "description": "Password of the registering user.",
+                        "example": "ProviderPass123"
+                    },
+                    "latitude": {
+                        "type": "number",
+                        "format": "float",
+                        "description": "Latitude of the hotspot location.",
+                        "example": 34.0522
+                    },
+                    "longitude": {
+                        "type": "number",
+                        "format": "float",
+                        "description": "Longitude of the hotspot location.",
+                        "example": -118.2437
+                    },
+                    "altitude": {
+                        "type": "integer",
+                        "format": "int32",
+                        "description": "Altitude of the hotspot location in meters.",
+                        "nullable": True,
+                        "example": 100
+                    },
+                    "address": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 255,
+                        "description": "Street address of the hotspot location.",
+                        "nullable": True,
+                        "example": "123 Main St"
+                    },
+                    "city": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 100,
+                        "description": "City of the hotspot location.",
+                        "nullable": True,
+                        "example": "Los Angeles"
+                    },
+                    "country": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 100,
+                        "description": "Country of the hotspot location.",
+                        "nullable": True,
+                        "example": "USA"
+                    },
+                    "postal_code": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 20,
+                        "description": "Postal code of the hotspot location.",
+                        "nullable": True,
+                        "example": "90001"
+                    },
+                    "geometry": {
+                        "type": "string",
+                        "description": "Geographic geometry data (e.g., GeoJSON).",
+                        "nullable": True,
+                        "example": '{"type": "Point", "coordinates": [-118.2437, 34.0522]}'
+                    },
+                    "encryption_method": {
+                        "type": "integer",
+                        "description": "Encryption method (0: None, 1: WEP, 2: WPA, 3: WPA2, 4: WPA3).",
+                        "enum": [0, 1, 2, 3, 4],
+                        "example": 3
+                    },
+                    "authentication_method": {
+                        "type": "string",
+                        "description": "Network authentication type.",
+                        "enum": ["EAP-SIM", "EAP-AKA", "EAP-TLS", "EAP-TTLS", "PEAP", "LEAP", "EAP-FAST",
+                                 "EAP-PSK", "EAP-PWD", "EAP-IKEv2", "EAP-GTC", "EAP-MD5", "EAP-MSCHAPv2"],
+                        "example": "WPA2-PSK"
+                    },
+                    "qos_support": {
+                        "type": "boolean",
+                        "description": "Quality of Service support.",
+                        "example": True
+                    },
+                    "ipv4_address": {
+                        "type": "string",
+                        "format": "ipv4",
+                        "description": "IPv4 address of the hotspot.",
+                        "example": "192.168.1.1"
+                    },
+                    "ipv6_address": {
+                        "type": "string",
+                        "format": "ipv6",
+                        "description": "IPv6 address of the hotspot.",
+                        "example": "2001:0db8:85a3:0000:0000:8a2e:0370:7334"
+                    },
+                    "network_details": {
+                        "type": "string",
+                        "description": "Additional details about the network.",
+                        "nullable": True,
+                        "example": "Guest network"
+                    }
+                },
+            },
+            "DataUsageSchema": {
+                "type": "object",
+                "required": ["user_id", "hotspot_id", "data_used"],
+                "properties": {
+                    "user_id": {
+                        "type": "integer",
+                        "format": "int32",
+                        "minimum": 1,
+                        "description": "ID of the user.",
+                        "example": 123
+                    },
+                    "hotspot_id": {
+                        "type": "integer",
+                        "format": "int32",
+                        "minimum": 1,
+                        "description": "ID of the hotspot.",
+                        "example": 456
+                    },
+                    "data_used": {
+                        "type": "number",
+                        "format": "float",
+                        "minimum": 0,
+                        "description": "Data used in MB.",
+                        "example": 25.5
+                    },
+                },
+            },
+            "OrganizationsSchema": {
+                "type": "object",
+                "required": ["provider_name", "email", "password", "contact_phone"],
+                "properties": {
+                    "provider_name": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 255,
+                        "description": "Name of the provider organization.",
+                        "example": "UnityWiFi Solutions"
+                    },
+                    "email": {
+                        "type": "string",
+                        "format": "email",
+                        "minLength": 1,
+                        "maxLength": 255,
+                        "description": "Email address of the provider.",
+                        "example": "info@unitywifi.com"
+                    },
+                    "password": {
+                        "type": "string",
+                        "minLength": 8,
+                        "description": "Password for the provider user.",
+                        "example": "ProviderPass123"
+                    },
+                    "contact_phone": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 20,
+                        "description": "Contact phone number of the provider.",
+                        "example": "+15551234567"
+                    },
+                    "website": {
+                        "type": "string",
+                        "format": "uri",  # Use 'uri' format for URLs
+                        "nullable": True,
+                        "description": "Website URL of the provider.",
+                        "example": "https://www.unitywifi.com"
+                    },
+                    "details": {
+                        "type": "string",
+                        "description": "Additional details about the provider.",
+                        "nullable": True,
+                        "example": "Provides high-speed WiFi solutions."
+                    },
+                },
+            },
+            "ErrorResponse": {
+                "type": "object",
+                "properties": {
+                    "error": {
+                        "type": "object",
+                        "properties": {
+                            "message": {
+                                "type": "string",
+                                "description": "Error message.",
+                                "example": "Invalid request parameters."
+                            },
+                            "code": {
+                                "type": "integer",
+                                "format": "int32",
+                                "description": "HTTP status code.",
+                                "example": 400
+                            }
+                        },
+                        "required": ["message", "code"]
+                    }
+                },
+                "required": ["error"]
+            }
         }
-    }
+    },
+    "security": [  # Apply security globally (optional)
+        {
+            "BearerAuth": []
+        }
+    ]
 }
