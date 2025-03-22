@@ -12,7 +12,7 @@ payload = {}
 headers = {"Content-Type": "application/json"}
 
 try:
-    response = requests.post(url, data=json.dumps(payload), headers=headers)
+    response = requests.get(url, headers=headers)
     response.raise_for_status()
 
     print("Response status code:", response.status_code)

@@ -151,70 +151,33 @@ class UserPasswordChange(Resource):
             print(f"Error changing password: {e}")
             return {"message": "An error occurred during password change"}, 500
         
-## User Details Resource
-#class UserDetails(Resource):
-#    """
-#    API resource for user details.
-#    """
-#    @swag_from('app/docs/user_details.yml')
-#    def get(self):
-#        """
-#        Handles user details.
-#        """
-#        try:
-#            user_id = g.user["user_id"]
-#            conn, cursor = get_db_connection()
-#            cursor.execute("SELECT username, email, registration_date, last_login FROM users WHERE user_id = %s", (user_id,))
-#            user = cursor.fetchone()
-#            if user:
-#                put_db_connection(conn)
-#                return {"user": user}, 200
-#            else:
-#                put_db_connection(conn)
-#                return {"message": "User not found"}, 404
-#        except Exception as e:
-#            conn = getattr(g, 'conn', None)
-#            if conn:
-#                put_db_connection(conn)
-#            print(f"Error getting user details: {e}")
-#            return {"message": "An error occurred while getting user details"}, 500
-
-
-import logging
-
-# Configure logging
-logging.basicConfig(level=logging.DEBUG)
-
 # User Details Resource
 class UserDetails(Resource):
     """
     API resource for user details.
     """
     @swag_from('app/docs/user_details.yml')
-    def get(self):
+    def get(self, user_id):
         """
         Handles user details.
         """
         try:
-            if not hasattr(g, 'user') or 'user_id' not in g.user:
+            if not hasattr(g, 'user') or g.user["user_id"] != user_id:
                 return {"message": "User not authenticated"}, 401
             
             user_id = g.user["user_id"]
-            logging.debug(f"Fetching details for user_id: {user_id}")
             conn, cursor = get_db_connection()
             cursor.execute("SELECT username, email, registration_date, last_login FROM users WHERE user_id = %s", (user_id,))
             user = cursor.fetchone()
             if user:
                 put_db_connection(conn)
-                logging.debug(f"User details found: {user}")
                 return {"user": user}, 200
             else:
                 put_db_connection(conn)
-                logging.debug("User not found")
                 return {"message": "User not found"}, 404
         except Exception as e:
             conn = getattr(g, 'conn', None)
             if conn:
                 put_db_connection(conn)
-            logging.error(f"Error getting user details: {e}", exc_info=True)
+            print(f"Error getting user details: {e}")
             return {"message": "An error occurred while getting user details"}, 500
