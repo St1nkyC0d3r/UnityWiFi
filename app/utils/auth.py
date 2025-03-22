@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 from functools import wraps
 from typing import Dict, Any
 from dotenv import load_dotenv
+from app.utils.database import get_db_connection, put_db_connection
 
 # Load environment variables
 load_dotenv()
@@ -70,3 +71,13 @@ def token_required(f):
         return f(*args, **kwargs)
 
     return decorated
+
+def get_user_id(email: str, password: str) -> int:
+    """
+    Gets the user ID for a given email and password.
+    """
+    conn, cursor = get_db_connection()
+    cursor.execute("SELECT user_id FROM users WHERE email = %s AND password_hash = %s", (email, password))
+    user_id = cursor.fetchone()["user_id"]
+    put_db_connection(conn)
+    return user_id
