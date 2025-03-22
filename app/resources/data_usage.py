@@ -3,8 +3,8 @@ from flask_restful import Resource
 from marshmallow import ValidationError
 from app.schemas.data_usage import DataUsageSchema  # Import DataUsageSchema
 from app.utils.auth import token_required
-from app.utils.database import get_db_connection, put_db_connection
-from app.utils.exceptions import APIException, DatabaseError, execute_query
+from app.utils.database import get_db_connection, put_db_connection, execute_query
+from app.utils.exceptions import APIException, DatabaseError
 
 
 # Data Check Resource
