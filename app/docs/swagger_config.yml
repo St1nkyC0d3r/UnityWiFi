@@ -1,0 +1,205 @@
+headers: []
+title: "UnityWiFi API"
+uiversion: 3
+version: "1.0.0"
+specs:
+  - endpoint: 'api_spec'
+    route: '/api/spec'
+static_url_path: "/flasgger_static"
+swagger_ui: True
+description: "API documentation for UnityWiFi"
+servers:
+  - url: "http://127.0.0.1:5000" # Update this if needed
+    description: "Development server"
+components:
+  securitySchemes:
+    BearerAuth:
+      type: "http"
+      scheme: "bearer"
+      bearerFormat: "JWT"
+  schemas:
+    UserSchema:
+      type: "object"
+      properties:
+        username:
+          type: "string"
+          minLength: 1
+          maxLength: 255
+        email:
+          type: "string"
+          format: "email"
+          minLength: 1
+          maxLength: 255
+        password:
+          type: "string"
+          minLength: 8
+      required:
+        - username
+        - email
+        - password
+    HotspotSchema:
+      type: "object"
+      properties:
+        ssid:
+          type: "string"
+          minLength: 1
+          maxLength: 255
+        bssid:
+          type: "string"
+          pattern: "^([0-9A-Fa-f]{2}:){5}([0-9A-Fa-f]{2})$"
+        max_signal_strength:
+          type: "integer"
+          minimum: 1
+          maximum: 100
+        channel:
+          type: "integer"
+          minimum: 1
+          maximum: 14
+        frequency:
+          type: "integer"
+        hotspot_details:
+          type: "string"
+        username:
+          type: "string"
+          minLength: 1
+          maxLength: 255
+        password:
+          type: "string"
+          minLength: 8
+        latitude:
+          type: "number"
+          format: "float"
+        longitude:
+          type: "number"
+          format: "float"
+        altitude:
+          type: "integer"
+        address:
+          type: "string"
+          minLength: 1
+          maxLength: 255
+        city:
+          type: "string"
+          minLength: 1
+          maxLength: 100
+        country:
+          type: "string"
+          minLength: 1
+          maxLength: 100
+        postal_code:
+          type: "string"
+          minLength: 1
+          maxLength: 20
+        geometry:
+          type: "string"
+        encryption_method:
+          type: "integer"
+          enum: [0, 1, 2, 3, 4] # Example values for WEP, WPA, WPA2, WPA3, None
+        authentication_method:
+          type: "string"
+          enum: ["EAP-SIM", "EAP-AKA", "EAP-TLS", "EAP-TTLS", "PEAP", "LEAP", "EAP-FAST", "EAP-PSK", "EAP-PWD", "EAP-IKEv2", "EAP-GTC", "EAP-MD5", "EAP-MSCHAPv2"]
+        qos_support:
+          type: "boolean"
+        ipv4_address:
+          type: "string"
+          format: "ipv4"
+        ipv6_address:
+          type: "string"
+          format: "ipv6"
+        network_details:
+          type: "string"
+      required:
+        - ssid
+        - bssid
+        - username
+        - password
+        - latitude
+        - longitude
+        - encryption_method
+        - authentication_method
+        - qos_support
+        - ipv4_address
+        - ipv6_address
+    DataUsageSchema:
+      type: "object"
+      properties:
+        user_id:
+          type: "integer"
+          minimum: 1
+        hotspot_id:
+          type: "integer"
+          minimum: 1
+        data_used:
+          type: "number"
+          format: "float"
+          minimum: 0
+      required:
+        - user_id
+        - hotspot_id
+        - data_used
+    OrganizationsSchema:
+      type: "object"
+      properties:
+        provider_name:
+          type: "string"
+          minLength: 1
+          maxLength: 255
+        email:
+          type: "string"
+          format: "email"
+        password:
+          type: "string"
+          minLength: 8
+        contact_phone:
+          type: "string"
+          minLength: 1
+          maxLength: 20
+        website:
+          type: "string"
+          format: "url"
+        details:
+          type: "string"
+      required:
+        - provider_name
+        - email
+        - password
+        - contact_phone
+    LocationsSchema:
+      type: "object"
+      properties:
+        latitude:
+          type: "number"
+          format: "float"
+        longitude:
+          type: "number"
+          format: "float"
+        altitude:
+          type: "integer"
+        address:
+          type: "string"
+          minLength: 1
+          maxLength: 255
+        city:
+          type: "string"
+          minLength: 1
+          maxLength: 100
+        country:
+          type: "string"
+          minLength: 1
+          maxLength: 100
+        postal_code:
+          type: "string"
+          minLength: 1
+          maxLength: 20
+        geometry:
+          type: "string"
+      required:
+        - latitude
+        - longitude
+    ErrorResponse:
+      type: "object"
+      properties:
+        message:
+          type: "string"
+      required:
+        - message

@@ -1,17 +1,5 @@
-import os
-from flask import Flask, request, g
-from flask_restful import Api, Resource
-from psycopg2 import connect, extras
-from psycopg2.pool import ThreadedConnectionPool
-from jwt import encode, decode
-from datetime import datetime, timedelta
-from functools import wraps
-from dotenv import load_dotenv
-from typing import Tuple, Dict, Any
-import bcrypt
-from urllib.parse import urlparse, parse_qs
-from marshmallow import Schema, fields, ValidationError, validate  # Import Marshmallow
-from flasgger import Swagger  # Import Swagger
+import re
+from urllib.parse import urlparse
 
 def is_valid_url(url: str) -> bool:
     """
@@ -58,5 +46,3 @@ def is_network_authentication_type_valid(authentication_type: str) -> bool:
     Checks if a given string is a valid network authentication type.
     """
     return authentication_type in ["EAP-SIM", "EAP-AKA", "EAP-TLS", "EAP-TTLS", "PEAP", "LEAP", "EAP-FAST", "EAP-PSK", "EAP-PWD", "EAP-IKEv2", "EAP-GTC", "EAP-MD5", "EAP-MSCHAPv2", "EAP-TLS", "EAP-TTLS", "PEAP", "LEAP", "EAP-FAST", "EAP-PSK", "EAP-PWD", "EAP-IKEv2", "EAP-GTC", "EAP-MD5", "EAP-MSCHAPv2"]
-
-
