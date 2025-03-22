@@ -12,10 +12,16 @@ from typing import Tuple, Dict, Any
 import bcrypt
 from urllib.parse import urlparse, parse_qs
 from marshmallow import Schema, fields, ValidationError, validate  # Import Marshmallow
+<<<<<<< Updated upstream
 from flasgger import Swagger, swag_from  # Import Swagger
 from common import *
 from validation import *
 
+=======
+from flasgger import Swagger  # Import Swagger
+import os
+from common import error_response, is_valid_url, is_valid_bssid
+>>>>>>> Stashed changes
 
 # Load environment variables
 load_dotenv()
@@ -258,6 +264,7 @@ def execute_query(query: str, params: tuple = None, fetchone: bool = False, comm
     """
     Executes a database query and handles connection management.
 
+<<<<<<< Updated upstream
     Args:
         query (str): The SQL query to execute.
         params (tuple, optional): Parameters to pass to the query. Defaults to None.
@@ -349,7 +356,29 @@ def get_user_id(email: str, password: str):
 
 
 
+=======
 
+>>>>>>> Stashed changes
+
+
+
+def is_security_type_valid(security_type: str) -> bool:
+    """
+    Checks if a given string is a valid security type.
+    """
+    return security_type in ["WEP", "WPA", "WPA2", "WPA3", "None"]
+
+def is_valid_email(email: str) -> bool:
+    """
+    Checks if a given string is a valid email address.
+    """
+    return ("@" in email) and ('.' in email.split("@")[1])
+
+def is_network_authentication_type_valid(authentication_type: str) -> bool:
+    """
+    Checks if a given string is a valid network authentication type.
+    """
+    return authentication_type in ["EAP-SIM", "EAP-AKA", "EAP-TLS", "EAP-TTLS", "PEAP", "LEAP", "EAP-FAST", "EAP-PSK", "EAP-PWD", "EAP-IKEv2", "EAP-GTC", "EAP-MD5", "EAP-MSCHAPv2", "EAP-TLS", "EAP-TTLS", "PEAP", "LEAP", "EAP-FAST", "EAP-PSK", "EAP-PWD", "EAP-IKEv2", "EAP-GTC", "EAP-MD5", "EAP-MSCHAPv2"]
 # Custom Exception for handling errors
 class APIException(Exception):
     """
@@ -373,7 +402,6 @@ class DatabaseError(Exception):
 
 
 
-
 # Schema Definitions (Marshmallow)
 class UserSchema(Schema):
     """
@@ -390,6 +418,7 @@ class HotspotSchema(Schema):
     # Hotspots
     ssid = fields.Str(required=True, validate=validate.Length(min=1, max=255))
     bssid = fields.Str(required=True, validate=is_valid_bssid)
+<<<<<<< Updated upstream
     max_signal_strength = fields.Integer(required=False, validate=validate.Range(min=1, max=100))
     channel = fields.Integer(required=False, validate=validate.Range(min=1, max=14))
     frequency = fields.Integer(required=False)
@@ -417,6 +446,16 @@ class HotspotSchema(Schema):
     ipv4_address = fields.IPv4(required=True)
     ipv6_address = fields.IPv6(required=True)
     network_details = fields.Str(required=False)
+=======
+    location_id = fields.Integer(required=True, validate=validate.Range(min=1))
+    network_id = fields.Integer(required=True, validate=validate.Range(min=1))
+    provider_id = fields.Integer(required=False, validate=validate.Range(min=1))
+    security_type = fields.Integer(required=True, validate=is_security_type_valid)
+    max_signal_strength = fields.Integer(required=False, validate=validate.Range(min=1, max=100))
+    channel = fields.Integer(required=False, validate=validate.Range(min=1, max=14))
+    frequency = fields.Integer(required=False)
+    details = fields.Str(required=False)
+>>>>>>> Stashed changes
 
 class DataUsageSchema(Schema):
     """
@@ -431,12 +470,30 @@ class OrganizationsSchema(Schema):
     Schema for organization registration.
     """
     provider_name = fields.Str(required=True, validate=validate.Length(min=1, max=255))
+<<<<<<< Updated upstream
     email = fields.Email(required=True, validate=is_valid_email)
     password = fields.Str(required=True, validate=validate.Length(min=8))
+=======
+    contact_email = fields.Email(required=True, validate=is_valid_email)
+>>>>>>> Stashed changes
     contact_phone = fields.Str(required=True, validate=validate.Length(min=1, max=20))
     website = fields.Str(required=False, validate=is_valid_url)
     details = fields.Str(required=False)
 
+<<<<<<< Updated upstream
+=======
+class NetworksSchema(Schema):
+    """
+    Schema for network registration.
+    """
+    encryption_method = fields.Str(required=True, validate=is_security_type_valid)
+    authentication_method = fields.Str(required=True, validate=is_network_authentication_type_valid)
+    qos_support = fields.Boolean(required=False)
+    ipv4_address = fields.IPv4(required=False)
+    ipv6_address = fields.IPv6(required=False)
+    details = fields.Str(required=False)
+
+>>>>>>> Stashed changes
 class LocationsSchema(Schema):
     """
     Schema for location registration.
@@ -449,7 +506,10 @@ class LocationsSchema(Schema):
     country = fields.Str(required=False, validate=validate.Length(min=1, max=100))
     postal_code = fields.Str(required=False, validate=validate.Length(min=1, max=20))
     geometry = fields.Str(required=False)
+<<<<<<< Updated upstream
 
+=======
+>>>>>>> Stashed changes
 
 
 # User Registration Resource
@@ -582,7 +642,11 @@ class UserLogin(Resource):
 
             if user:
                 if bcrypt.checkpw(password.encode("utf-8"), user["password_hash"].encode("utf-8")):
+<<<<<<< Updated upstream
                     token = generate_token(user["user_id"])
+=======
+                    token = generate_token(user["id"])
+>>>>>>> Stashed changes
                     cursor.execute("UPDATE users SET last_login = NOW() WHERE user_id = %s", (user["user_id"],))
                     conn.commit()
                     put_db_connection(conn)
