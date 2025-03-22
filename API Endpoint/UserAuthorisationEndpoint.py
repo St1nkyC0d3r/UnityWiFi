@@ -2,6 +2,7 @@ import os
 from flask import Flask, request, g
 from flask_restful import Api, Resource
 from psycopg2 import connect, extras
+import psycopg2
 from psycopg2.pool import ThreadedConnectionPool
 from jwt import encode, decode
 from datetime import datetime, timedelta
@@ -11,9 +12,10 @@ from typing import Tuple, Dict, Any
 import bcrypt
 from urllib.parse import urlparse, parse_qs
 from marshmallow import Schema, fields, ValidationError, validate  # Import Marshmallow
-from flasgger import Swagger  # Import Swagger
-import os
-from common import error_response
+from flasgger import Swagger, swag_from  # Import Swagger
+from common import *
+from validation import *
+
 
 # Load environment variables
 load_dotenv()
@@ -255,33 +257,88 @@ def token_required(f):
     return decorated
 
 
-def is_valid_url(url: str) -> bool:
+def execute_query(query: str, params: tuple = None, fetchone: bool = False, commit: bool = True) -> Any:
     """
-    Checks if a given string is a valid URL.
-    """
-    try:
-        result = urlparse(url)
-        return all([result.scheme, result.netloc])
-    except ValueError:
-        return False
+    Executes a database query and handles connection management.
 
-def is_valid_bssid(bssid: str) -> bool:
+    Args:
+        query (str): The SQL query to execute.
+        params (tuple, optional): Parameters to pass to the query. Defaults to None.
+        fetchone (bool, optional): Whether to fetch one result or all. Defaults to False.
+        commit (bool, optional): Whether to commit the transaction. Defaults to True.
+
+    Returns:
+        Any: The result of the query (None, one row, or all rows).
+
+    Raises:
+        DatabaseError: If a database error occurs.
     """
-    Checks if a given string is a valid BSSID.
+    conn, cursor = get_db_connection()
+    try:
+        cursor.execute(query, params)
+        if fetchone:
+            result = cursor.fetchone()
+        else:
+            result = cursor.fetchall()
+        if commit:
+            conn.commit()
+        return result
+    except psycopg2.Error as e:
+        conn.rollback()
+        print(f"Database error: {e}")
+        raise DatabaseError() from e  # Preserve original exception as context
+    finally:
+        put_db_connection(conn)
+
+
+def validate_unique_bssid_ssid(ssid, bssid):
     """
-    if not isinstance(bssid, str):
-        return False
-    parts = bssid.split(":")
-    if len(parts) != 6:
-        return False
-    for part in parts:
-        try:
-            int(part, 16)
-        except ValueError:
-            return False
-        if len(part) != 2:
-            return False
-    return True
+    Checks if a BSSID and SSID combination is unique in the database.
+
+    Args:
+        ssid (str): The SSID to check.
+        bssid (str): The BSSID to check.
+
+    Raises:
+        APIException: If the BSSID and SSID combination is not unique.
+    """
+    conn, cursor = get_db_connection()
+    try:
+        cursor.execute(
+            "SELECT 1 FROM hotspots WHERE bssid = %s AND ssid = %s",
+            (bssid, ssid),
+        )
+        if cursor.fetchone():
+            raise APIException("A hotspot with this BSSID and SSID combination already exists.", 400)
+    finally:
+        put_db_connection(conn)
+
+
+def check_data_usage_limit(user_id: int, hotspot_id: int, data_used: float):
+    """
+    Checks if a user has exceeded the data usage limit for a hotspot.
+
+    Args:
+        user_id (int): The ID of the user.
+        hotspot_id (int): The ID of the hotspot.
+        data_used (float): The amount of data used in MB.
+
+    Raises:
+        APIException: If the user has exceeded the data usage limit.
+    """
+    # Define the data usage limit (e.g., 1000 MB)
+    data_usage_limit = 1000.0
+
+    conn, cursor = get_db_connection()
+    cursor.execute("SELECT SUM(data_used) FROM data_usage WHERE user_id = %s AND timestamp >= %s", (user_id, one_month_ago_exactly()))
+    current_usage = cursor.fetchone()
+    put_db_connection(conn)
+
+    if current_usage + data_used > data_usage_limit:
+        raise APIException(f"Data usage limit ({data_usage_limit} MB) exceeded for user {user_id}", 400)
+
+
+
 
 # Custom Exception for handling errors
 class APIException(Exception):
@@ -295,6 +352,14 @@ class APIException(Exception):
 
     def to_dict(self):
         return {"message": self.message}
+    
+class DatabaseError(Exception):
+    """
+    Custom exception class for handling database errors.
+    """
+    def __init__(self, message="A database error occurred"):
+        super().__init__(message)
+        self.message = message
 
 
 # Schema Definitions (Marshmallow)
@@ -313,9 +378,29 @@ class HotspotSchema(Schema):
     """
     ssid = fields.Str(required=True, validate=validate.Length(min=1, max=255))
     bssid = fields.Str(required=True, validate=is_valid_bssid)
-    location_id = fields.Integer(required=True, validate=validate.Range(min=1))
-    network_id = fields.Integer(required=True, validate=validate.Range(min=1))
-    provider_id = fields.Integer(required=False, validate=validate.Range(min=1))
+    max_signal_strength = fields.Integer(required=False, validate=validate.Range(min=1, max=100))
+    channel = fields.Integer(required=False, validate=validate.Range(min=1, max=14))
+    frequency = fields.Integer(required=False)
+    hotspot_details = fields.Str(required=False)
+
+    username = fields.Str(required=True, validate=validate.Length(min=1, max=255))
+    password = fields.Str(required=True, validate=validate.Length(min=8))
+
+    latitude = fields.Float(required=True)
+    longitude = fields.Float(required=True)
+    altitude = fields.Integer(required=False)
+    address = fields.Str(required=False, validate=validate.Length(min=1,max=255))
+    city = fields.Str(required=False, validate=validate.Length(min=1,max=100))
+    country = fields.Str(required=False, validate=validate.Length(min=1,max=100))
+    postal_code = fields.Str(required=False, validate=validate.Length(min=1,max=20))
+    geometry = fields.Str(required=False)                           #################################################################### AHAHA gonna sort this out soon (ish)
+
+    encryption_method = fields.Integer(required=True, validate=is_security_type_valid)
+    authentication_method = fields.Str(required=True, validate=is_network_authentication_type_valid)
+    qos_support = fields.Boolean(required=True)
+    ipv4_address = fields.IPv4(required=True)
+    ipv6_address = fields.IPv6(required=True)
+    network_details = fields.Str(required=False)
 
 
 class DataUsageSchema(Schema):
@@ -326,6 +411,28 @@ class DataUsageSchema(Schema):
     hotspot_id = fields.Integer(required=True, validate=validate.Range(min=1))
     data_used = fields.Float(required=True, validate=validate.Range(min=0))
 
+class OrganizationsSchema(Schema):
+    """
+    Schema for organization registration.
+    """
+    provider_name = fields.Str(required=True, validate=validate.Length(min=1, max=255))
+    contact_email = fields.Email(required=True, validate=is_valid_email)
+    contact_phone = fields.Str(required=True, validate=validate.Length(min=1, max=20))
+    website = fields.Str(required=False, validate=is_valid_url)
+    details = fields.Str(required=False)
+
+class LocationsSchema(Schema):
+    """
+    Schema for location registration.
+    """
+    latitude = fields.Float(required=True)
+    longitude = fields.Float(required=True)
+    altitude = fields.Float(required=False)
+    address = fields.Str(required=False, validate=validate.Length(min=1, max=255))
+    city = fields.Str(required=False, validate=validate.Length(min=1, max=100))
+    country = fields.Str(required=False, validate=validate.Length(min=1, max=100))
+    postal_code = fields.Str(required=False, validate=validate.Length(min=1, max=20))
+    geometry = fields.Str(required=False)
 
 
 # User Registration Resource
@@ -389,8 +496,8 @@ class UserRegister(Resource):
 
             hashed_password = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
 
-            cursor.execute("INSERT INTO users (username, email, password_hash, registration_date) VALUES (%s, %s, %s, NOW()) RETURNING id", (username, email, hashed_password))
-            user_id = cursor.fetchone()["id"]
+            cursor.execute("INSERT INTO users (username, email, password_hash, registration_date) VALUES (%s, %s, %s, NOW()) RETURNING user_id", (username, email, hashed_password))
+            user_id = cursor.fetchone()["user_id"]
             conn.commit()
             put_db_connection(conn)
 
@@ -460,8 +567,8 @@ class UserLogin(Resource):
 
             if user:
                 if bcrypt.checkpw(password.encode("utf-8"), user["password_hash"].encode("utf-8")):
-                    token = generate_token(user["id"])
-                    cursor.execute("UPDATE users SET last_login = NOW() WHERE id = %s", (user["id"],))
+                    token = generate_token(user["user_id"])
+                    cursor.execute("UPDATE users SET last_login = NOW() WHERE user_id = %s", (user["user_id"],))
                     conn.commit()
                     put_db_connection(conn)
                     return {"message": "User logged in successfully", "token": token}, 200
@@ -532,25 +639,80 @@ class HotspotRegister(Resource):
             data = request.get_json()
             hotspot_schema = HotspotSchema()
             validated_data = hotspot_schema.load(data)
-
+            # Fetch ssid, bssid etc
             ssid = validated_data["ssid"]
             bssid = validated_data["bssid"]
-            location_id = validated_data["location_id"]
-            network_id = validated_data["network_id"]
-            provider_id = validated_data.get("provider_id")
+            max_signal_strength = validated_data["max_signal_strenth"]
+            channel = validated_data["channel"]
+            frequency = validated_data["frequency"]
+            hotspot_details = validated_data["hotspot_details"]
 
-            conn, cursor = get_db_connection()
-            cursor.execute(
-                """
-                INSERT INTO hotspots (ssid, bssid, location_id, network_id, provider_id)
-                VALUES (%s, %s, %s, %s, %s) RETURNING hotspot_id
-                """,
-                (ssid, bssid, location_id, network_id, provider_id),
-            )
-            hotspot_id = cursor.fetchone()["hotspot_id"]
-            conn.commit()
-            put_db_connection(conn)
-            return {"message": "Hotspot registered successfully", "hotspot_id": hotspot_id}, 201
+            latitude = validated_data["latitude"]
+            longitude = validated_data["longitude"]
+            altitude = validated_data["altitude"]
+            address = validated_data["address"]
+            city = validated_data["city"]
+            country = validated_data["country"]
+            postal_code = validated_data["postal_code"]
+            geometry = validated_data["geometry"]
+
+            username = validated_data["username"]
+            password = validated_data["password"]
+
+            encryption_method = validated_data["encryption_method"]
+            authentication_method = validated_data["authentication_method"]
+            qos_support = validated_data["qos_support"]
+            ipv4_address = validated_data["ipv4_address"]
+            ipv6_address = validated_data["ipv6_address"]
+            network_details = validated_data["network_details"]
+
+            validate_unique_bssid_ssid(ssid, bssid) # Check for uniqueness
+
+
+            # Check valid user.
+
+            cursor.execute("SELECT * FROM users WHERE username = %s", (username,))
+            user = cursor.fetchone()
+
+            if user:
+                if bcrypt.checkpw(password.encode("utf-8"), user["password_hash"].encode("utf-8")):
+                    cursor.execute("UPDATE users SET last_login = NOW() WHERE user_id = %s", (user["user_id"],))
+                    conn.commit()
+                    put_db_connection(conn)
+                    cursor.execute("SELECT provider_id FROM organizations WHERE user_id = %s", (user["user_id"],))
+                    existing_provider = cursor.fetchone()
+                    if existing_provider:
+                        provider_id = existing_provider["provider_id"]
+                        conn, cursor = get_db_connection()
+                        cursor.execute("INSERT INTO locations (latitude, longitude, altitude, address, city, country, postal_code, geometry) VALUES (%s, %s, %s, %s, %s, %s, %s, %s) RETURNING location_id", (longitude, latitude, altitude, address, city, country, postal_code, geometry,))
+                        location = cursor.fetchone()
+                        put_db_connection(conn)
+                        location_id = location["location_id"]
+                        conn, cursor = get_db_connection()
+                        cursor.execute("INSERT INTO networks (encryption_method, authentication_method, qos_support, ipv4_address, ipv6_address, details) VALUES (%s, %s, %s, %s, %s, %s) RETURNING network_id", (encryption_method, authentication_method, qos_support, ipv4_address, ipv6_address, network_details))
+                        network_id = cursor.fetchone()["network_id"]
+                        conn, cursor = get_db_connection()
+                        cursor.execute(
+                            """
+                            INSERT INTO hotspots (network_id, location_id, provider_id, ssid, bssid, max_signal_strength, channel, frequency, details)
+                            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING hotspot_id
+                            """,
+                            (network_id, location_id, provider_id, ssid, bssid, max_signal_strength, channel, frequency, hotspot_details),
+                        )
+                        hotspot_id = cursor.fetchone()["hotspot_id"]
+                        conn.commit()
+                        put_db_connection(conn)
+                        return {"message": "Hotspot registered successfully", "hotspot_id": hotspot_id}, 201
+                    else:
+                        put_db_connection(conn)
+                        raise APIException("Not registered to be an organization.", 401)
+                else:
+                    put_db_connection(conn)
+                    raise APIException("Invalid username/password", 401)
+            else:
+                put_db_connection(conn)
+                raise APIException("Invalid username/password", 401)
+
         except ValidationError as err:
             return error_response(err.messages, 400), 400
         except APIException as e:
@@ -681,7 +843,6 @@ class DataUsage(Resource):
 
             user_id = validated_data["user_id"]
             hotspot_id = validated_data["hotspot_id"]
-            data_used = validated_data["data_used"]
 
             conn, cursor = get_db_connection()
             cursor.execute(
@@ -696,31 +857,13 @@ class DataUsage(Resource):
             result = cursor.fetchone()
             total_usage = result["total_usage"] if result["total_usage"] else 0
 
-            if total_usage + data_used > BANDWIDTH_LIMIT:
+            if total_usage >= BANDWIDTH_LIMIT:
                 put_db_connection(conn)
-                raise APIException("Bandwidth limit exceeded", 400)
+                raise APIException("Bandwidth limit exceeded/reached, payment required to continue", 402)
+            else:
+                data_left = BANDWIDTH_LIMIT - total_usage
 
-            cursor.execute(
-                "INSERT INTO data_usage (user_id, hotspot_id, data_used, timestamp) VALUES (%s, %s, %s, NOW())",
-                (user_id, hotspot_id, data_used),
-            )
-
-            # Calculate earnings for the business (Example)
-            cursor.execute(
-                "SELECT business_id FROM hotspots WHERE hotspot_id = %s",
-                (hotspot_id,)
-            )
-            business_id_result = cursor.fetchone()
-            if business_id_result and business_id_result["business_id"]:
-                business_id = business_id_result["business_id"]
-                earnings = data_used * EARNINGS_RATE
-                # In a real application, you would likely have an 'earnings' table
-                # and update it accordingly.  This is a simplified example.
-                print(f"Credited ${earnings} to business {business_id} for data usage.")
-
-            conn.commit()
-            put_db_connection(conn)
-            return {"message": "Data usage logged successfully"}, 201
+            return {"message": "Not reached limit", "data_left": data_left}, 201
         except ValidationError as err:
             return error_response(err.messages, 400), 400
         except APIException as e:
@@ -733,12 +876,85 @@ class DataUsage(Resource):
             return error_response("An error occurred while logging data usage", 500), 500
 
 
+class DataPresence(Resource):
+    """
+    API resource for logging user data usage.
+    """
+
+    @token_required
+    @swag_from('docs/data_usage.yml')
+    def post(self):
+        """
+        Logs user data usage.
+
+        tags:
+          - Data Usage
+        security:
+          - BearerAuth: []
+        parameters:
+          - in: body
+            name: body
+            description: Data usage details.
+            required: true
+            schema:
+              $ref: '#/definitions/DataUsageSchema'
+        responses:
+          200:
+            description: Data usage logged successfully.
+            schema:
+              type: object
+              properties:
+                message:
+                  type: string
+          400:
+            description: Bad request.
+            schema:
+              $ref: '#/definitions/ErrorResponse'
+          401:
+            description: Unauthorized.
+            schema:
+              $ref: '#/definitions/ErrorResponse'
+          500:
+            description: Internal server error.
+            schema:
+              $ref: '#/definitions/ErrorResponse'
+        """
+        try:
+            data = request.get_json()
+            data_usage_schema = DataUsageSchema()
+            validated_data = data_usage_schema.load(data)
+
+            user_id = validated_data["user_id"]
+            hotspot_id = validated_data["hotspot_id"]
+            data_used = validated_data["data_used"]
+
+            check_data_usage_limit(user_id, hotspot_id, data_used)
+
+            query = """
+                INSERT INTO data_usage (user_id, hotspot_id, data_used, timestamp)
+                VALUES (%s, %s, %s, NOW()) RETURNING usage_id
+                """
+            params = (user_id, hotspot_id, data_used)
+            usage_id = execute_query(query, params, fetchone=True)[0]
+
+            return {"message": "Data usage logged successfully", "usage_id": usage_id}, 200
+        except ValidationError as err:
+            return error_response(err.messages, 400), 400
+        except DatabaseError as e:
+            return error_response(e.message, 500), 500
+        except APIException as e:
+            return error_response(e.message, e.status_code), e.status_code
+        except Exception as e:
+            print(f"Error logging data usage: {e}")
+            return error_response("An error occurred while logging data usage", 500), 500
+
 
 # Add resources to the API
 api.add_resource(UserRegister, "/register")
 api.add_resource(UserLogin, "/login")
 api.add_resource(HotspotRegister, "/hotspot/register")
 api.add_resource(HotspotDetails, "/hotspot/<int:hotspot_id>")
+api.add_resource(DataPresence, "/data_check")
 api.add_resource(DataUsage, "/data_usage")
 
 
