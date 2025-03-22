@@ -1,5 +1,30 @@
 import re
 from urllib.parse import urlparse
+from app.utils.database import get_db_connection, put_db_connection
+from app.utils.exceptions import APIException
+
+def validate_unique_bssid_ssid(ssid, bssid):
+    """
+    Checks if a BSSID and SSID combination is unique in the database.
+
+    Args:
+        ssid (str): The SSID to check.
+        bssid (str): The BSSID to check.
+
+    Raises:
+        APIException: If the BSSID and SSID combination is not unique.
+    """
+    conn, cursor = get_db_connection()
+    try:
+        cursor.execute(
+            "SELECT 1 FROM hotspots WHERE bssid = %s AND ssid = %s",
+            (bssid, ssid),
+        )
+        if cursor.fetchone():
+            raise APIException("A hotspot with this BSSID and SSID combination already exists.", 400)
+    finally:
+        put_db_connection(conn)
+
 
 def is_valid_url(url: str) -> bool:
     """

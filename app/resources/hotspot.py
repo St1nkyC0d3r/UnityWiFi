@@ -7,7 +7,7 @@ from app.utils.auth import generate_token, token_required
 from app.utils.database import get_db_connection, put_db_connection
 from app.utils.exceptions import APIException
 from flasgger import swag_from
-
+from app.utils.validation import validate_unique_bssid_ssid
 
 # Hotspot Registration Resource
 class HotspotRegister(Resource):

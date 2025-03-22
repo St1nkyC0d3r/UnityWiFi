@@ -5,6 +5,7 @@ from app.schemas.organizations import OrganizationsSchema
 from app.utils.auth import token_required
 from app.utils.database import get_db_connection, put_db_connection
 from app.utils.exceptions import APIException
+from app.utils.auth import get_user_id
 
 
 # Provider Register Resource

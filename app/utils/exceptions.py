@@ -17,3 +17,4 @@ class DatabaseError(Exception):
     def __init__(self, message="A database error occurred"):
         super().__init__(message)
         self.message = message
+

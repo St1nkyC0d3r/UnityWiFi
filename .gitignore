@@ -1,1 +1,5 @@
-API Endpoint/.env
+.env
+/app/resources/__pycache__
+/app/utils/__pycache__
+/app/schemas/__pycache__
+/app/__pycache__
