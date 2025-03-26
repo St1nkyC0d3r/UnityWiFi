@@ -7,12 +7,16 @@ from dotenv import load_dotenv
 load_dotenv()
 base_url = os.environ.get("BASE_URL")
 
-url = f"{base_url}/user/5"
-payload = {}
+url = f"{base_url}/user/register"
+payload = {
+    "username": "himnij",
+    "email": "maxim@maximgil.com",
+    "password": "Br*gh!0n07"
+}
 headers = {"Content-Type": "application/json"}
 
 try:
-    response = requests.get(url, headers=headers)
+    response = requests.post(url, headers=headers)
     response.raise_for_status()
 
     print("Response status code:", response.status_code)
