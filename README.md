@@ -1,4 +1,4 @@
-# UnityWiFi
+# NeoUnityWiFi
 
 The mission of UnityWiFi is to create a decentralized, community-driven WiFi sharing network that bridges the gap between businesses and internet users. This project aims to improve connectivity in high-traffic areas by leveraging underutilized business WiFi networks. The overarching goal is to provide a reliable, secure, and cost-effective alternative to cellular data while incentivizing businesses to participate through a pay-per-usage model.
 ________________________________________
